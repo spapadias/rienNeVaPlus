@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Shedding Exp
+./s_shedding
+wait
+
+# Window Range Exp
+./s_windowRange
+wait
+
+# NumQueries Exp
+./s_numQueries
+wait

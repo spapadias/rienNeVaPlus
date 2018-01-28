@@ -1,0 +1,76 @@
+-- File 1
+copy
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_1.csv' 
+with CSV DELIMITER ' ';
+
+-- File 2
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_2.csv' 
+with CSV DELIMITER ' ';
+
+-- File 3
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_3.csv' 
+with CSV DELIMITER ' ';
+
+-- File 4
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_4.csv' 
+with CSV DELIMITER ' ';
+
+-- File 5
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_5.csv' 
+with CSV DELIMITER ' ';
+
+-- File 6
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_6.csv' 
+with CSV DELIMITER ' ';
+
+-- File 6
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_7.csv' 
+with CSV DELIMITER ' ';
+
+-- File 7
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_8.csv' 
+with CSV DELIMITER ' ';
+
+-- File 8
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_9.csv' 
+with CSV DELIMITER ' ';
+
+-- File 9
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_10.csv' 
+with CSV DELIMITER ' ';
+
+-- File 10
+copy 
+	(select * from qids_distinct order by random() limit 500) 
+to 
+	'C:\Program Files\PostgreSQL\SSTD_queries\rQ500_10.csv' 
+with CSV DELIMITER ' ';

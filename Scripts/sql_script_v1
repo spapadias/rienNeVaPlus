@@ -1,0 +1,34 @@
+-- select count(*) from ls_sc6_speed;
+
+-- Delete entries from all tables
+/*
+delete from ls_sc0_speed;
+delete from ls_sc1_speed;
+delete from ls_sc2_speed;
+delete from ls_sc3_speed;
+delete from ls_sc4_speed;
+delete from ls_sc5_speed;
+delete from ls_sc6_speed;
+*/
+
+-- Insert entries to all tables
+/*
+COPY LS_sc0_speed FROM 'C:\sc0_r300.txt'  DELIMITER ',' NULL '';
+COPY LS_sc1_speed FROM 'C:\sc1.txt'  DELIMITER ',' NULL '';
+COPY LS_sc2_speed FROM 'C:\sc2.txt'  DELIMITER ',' NULL '';
+COPY LS_sc3_speed FROM 'C:\sc3.txt'  DELIMITER ',' NULL '';
+COPY LS_sc4_speed FROM 'C:\sc4.txt'  DELIMITER ',' NULL '';
+COPY LS_sc5_speed FROM 'C:\sc5.txt'  DELIMITER ',' NULL '';
+COPY LS_sc6_speed FROM 'C:\sc6.txt'  DELIMITER ',' NULL '';
+*/
+
+/* 
+WITH speed_differences AS (
+SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+FROM LS_sc6_speed A, LS_sc0_speed B
+WHERE A.t = B.t
+AND A.qID = B.qID
+AND A.speed >0 AND B.speed>0)
+SELECT round(AVG(diff_speed)::numeric,3) AS avg_Difference, round(stddev(diff_speed)::numeric,3) AS stdev_Difference
+FROM speed_differences;
+*/

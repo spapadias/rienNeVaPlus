@@ -1,0 +1,43 @@
+#!/bin/bash
+
+echo "*********************"
+echo "100K -- Number of Queries Experiment ........"
+
+# Num Of Queries experiment -- We choose all the possible number of queries settings
+for numQ in 100 200 300 400 500
+do
+	# Default number of queries is 300 -- Because we choose queries randomly then we repeat the experiment in 10 query sets
+	for randomQ in rQ"$numQ"_1 rQ"$numQ"_2 rQ"$numQ"_3 rQ"$numQ"_4 rQ"$numQ"_5 rQ"$numQ"_6 rQ"$numQ"_7 rQ"$numQ"_8 rQ"$numQ"_9 rQ"$numQ"_10
+	do
+		# Window Range Experiment ==> choose different number of window ranges
+		for r in 900
+		do
+			# For each LS setting
+			for sc in 0 1 2 3 5 # 4 is missing -- separate file
+			do
+				# Default capacity percentage is 30
+				for cap in 30
+				do
+#					echo 3 > /proc/sys/vm/drop_caches
+
+					echo "LS - $randomQ -  global range=$r - Capacity=$cap - schemaLS=$sc ........"
+#					./exe/main_sstd_papadias VALID ../data/athens_synthetic/traj100k_axes_peak.txt 0 0 ../data/athens_synthetic/query_axes_vectors.txt 500 500 "$cap" 5 0 100000 "$sc" 1 "$r" 10 ../data/athens_synthetic/sstd_random_queries/"$numQ"/"$randomQ".csv  > exps/100k_"$randomQ"_sc"$sc"_r"$r"_cap"$cap"_op1.txt &
+
+					echo 3 > /proc/sys/vm/drop_caches
+
+					./exe/main_sstd_papadias VALID ../data/athens_synthetic/traj100k_axes_peak.txt 0 0 ../data/athens_synthetic/query_axes_vectors.txt 500 500 "$cap" 5 0 100000 "$sc" 2 "$r" 10 ../data/athens_synthetic/sstd_random_queries/"$numQ"/"$randomQ".csv > exps/numq_100k_"$randomQ"_sc"$sc"_r"$r"_cap"$cap"_op2.txt &
+
+					echo 3 > /proc/sys/vm/drop_caches
+				done
+			done
+		done
+
+		wait
+	done
+done
+# 250 Experiments
+wait
+
+
+echo "END OF EXPERIMENTS..."
+echo "*********************"

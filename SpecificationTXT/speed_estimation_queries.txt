@@ -1,0 +1,254 @@
+--CHECKING DIFFERENCES IN SPEED ESTIMATES PER AXIS BETWEEN LOAD SHEDDING (Semantic & Random Selection) AND EXHAUSTIVE EVALUATION
+--Platform: PostgreSQL 9.4
+--Author: Kostas Patroumpas
+--Date:    20/7/2015
+--Revised: 28/9/2016
+
+----------------------------------
+TABLES (structure & data import)
+----------------------------------
+
+-- Table to hold information on road axes in Athens
+-- Actually this table stores road segments per axis; one axis consists of multiple segments)
+-- These axes represent the queries (for average speed estimations) applied in experiments
+-- Road classes: 1-> motorway, 2-> highway, 3-> primary arterial, 4-> secondary arterial.
+
+CREATE TABLE athens_axes
+(
+  qid integer,               -- Query identifier (= Road axis id)
+  win_range integer,         -- Window range (sec); same along the axis
+  win_slide integer,         -- Window slide (sec); same along the axis
+  category integer,          -- Road class
+  length double precision    -- Segment length (meters)
+)
+
+
+-- Import data from a CSV file (athens_axes.csv) at a specific directory:
+
+COPY athens_axes FROM 'C:\temp\athens_axes.csv' CSV HEADER DELIMITER ' ' NULL '';
+
+
+-- Table to hold speed measurements for the EXHAUSTIVE search (= NO LS at all):
+
+CREATE TABLE LS_exhaustive_speed
+(
+  t smallint,                   -- Timestamp
+  qid smallint,                 -- Query identifier (=Road axis)
+  speed double precision,       -- Average speed (km/h)
+  num_objects integer           -- Numer of objects used in speed estimation 
+);
+
+-- Import measurement data from an ASCII file (assuming they are COMMA delimited) with a COPY command:
+
+COPY LS_exhaustive_speed FROM 'dir\file.txt'  DELIMITER ',' NULL '';
+
+
+-- A similar table for holding speed measurements when SEMANTIC Load shedding is applied:
+
+CREATE TABLE LS_semantic_speed
+(
+  t smallint,
+  qid smallint,
+  speed double precision,
+  num_objects integer
+);
+
+-- Import measurement data from an ASCII file (assuming they are COMMA delimited) with a COPY command:
+
+COPY LS_semantic_speed FROM 'dir\file.txt'  DELIMITER ',' NULL '';
+
+
+-- A similar table for holding speed measurements when RANDOM Load shedding is applied:
+
+CREATE TABLE LS_random_speed
+(
+  t smallint,
+  qid smallint,
+  speed double precision,
+  num_objects integer
+);
+
+-- Import measurement data from an ASCII file (assuming they are COMMA delimited) with a COPY command:
+
+COPY LS_random_speed FROM 'dir\file.txt'  DELIMITER ',' NULL '';
+
+
+-----------------------------
+QUALITY STATISTICS
+-----------------------------
+
+-----------------------------------
+--Speed differences above 10 kmh
+-----------------------------------
+
+--SEMANTIC Load Shedding:
+
+SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, round(abs(A.speed - B.speed)::numeric,3) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+FROM LS_semantic_speed A, LS_exhaustive_speed B
+WHERE A.t = B.t
+AND A.qID = B.qID
+AND A.speed >0 AND B.speed>0
+AND abs(A.speed - B.speed)>10
+ORDER BY t ASC, abs(A.speed - B.speed) DESC;
+
+
+-- RANDOM Load Shedding:
+
+SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, round(abs(A.speed - B.speed)::numeric,3) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+FROM LS_random_speed A, LS_exhaustive_speed B
+WHERE A.t = B.t
+AND A.qID = B.qID
+AND A.speed >0 AND B.speed>0
+AND abs(A.speed - B.speed)>10
+ORDER BY t ASC, abs(A.speed - B.speed) DESC;
+
+
+-----------------------------------------------------------------------------
+--Mean and standard deviation among all difference values in speed estimates
+-----------------------------------------------------------------------------
+
+--SEMANTIC Load Shedding vs Exhaustive:
+
+WITH speed_differences AS (
+SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+FROM LS_semantic_speed A, LS_exhaustive_speed B
+WHERE A.t = B.t
+AND A.qID = B.qID
+AND A.speed >0 AND B.speed>0)
+SELECT round(AVG(diff_speed)::numeric,3) AS avg_Difference, round(stddev(diff_speed)::numeric,3) AS stdev_Difference
+FROM speed_differences;
+
+
+--RANDOM Load Shedding vs Exhaustive:
+
+WITH speed_differences AS (
+SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+FROM LS_random_speed A, LS_exhaustive_speed B
+WHERE A.t = B.t
+AND A.qID = B.qID
+AND A.speed >0 AND B.speed>0)
+SELECT round(AVG(diff_speed)::numeric,3) AS avg_Difference, round(stddev(diff_speed)::numeric,3) AS stdev_Difference
+FROM speed_differences;
+
+
+-----------------------------------------------------------------------------------------
+--Statistics (including mean and standard deviation) in speed differences per road class 
+-----------------------------------------------------------------------------------------
+
+--Road classes distinguished by their equivalent window slide values: 30-> motorway, 60-> highway, 90-> primary arterial, 120-> secondary arterial.
+--OPTIONALLY, apply an additional filter to emphasize the case (i.e., the time period) when load shedding is actually being applied:  AND A.t >=1200
+
+
+--SEMANTIC Load Shedding vs Exhaustive:
+
+WITH speed_differences AS (
+       SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+       FROM LS_semantic_speed A, LS_exhaustive_speed B
+       WHERE A.t = B.t
+--     AND A.t >=1200
+       AND A.qID = B.qID
+       AND A.speed >0 AND B.speed>0),
+    axes_classification AS (
+       SELECT qid, min(win_slide) AS class
+       FROM athens_axes
+       GROUP BY qid),
+    queries_per_class AS (
+       SELECT win_range, win_slide, count (DISTINCT qid) AS num_queries
+       FROM athens_axes
+       GROUP BY win_range, win_slide)
+SELECT C.class, E.num_queries, count(D.*) AS num_speed_results, round(max(diff_speed)::numeric,3) AS max_diff_speed, round(avg(diff_speed)::numeric,3) AS avg_diff_speed, round(stddev(diff_speed)::numeric,3) AS stdev_diff_speed
+FROM axes_classification C, speed_differences D, queries_per_class E
+WHERE C.qid = D.qid
+AND C.class = E.win_slide
+GROUP BY C.class, E.num_queries
+ORDER BY C.class;
+
+
+--RANDOM Load Shedding vs Exhaustive:
+
+WITH speed_differences AS (
+       SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+       FROM LS_random_speed A, LS_exhaustive_speed B
+       WHERE A.t = B.t
+--     AND A.t >=1200
+       AND A.qID = B.qID
+       AND A.speed >0 AND B.speed>0),
+    axes_classification AS (
+       SELECT qid, min(win_slide) AS class
+       FROM athens_axes
+       GROUP BY qid),
+    queries_per_class AS (
+       SELECT win_range, win_slide, count (DISTINCT qid) AS num_queries
+       FROM athens_axes
+       GROUP BY win_range, win_slide)
+SELECT C.class, E.num_queries, count(D.*) AS num_speed_results, round(max(diff_speed)::numeric,3) AS max_diff_speed, round(avg(diff_speed)::numeric,3) AS avg_diff_speed, round(stddev(diff_speed)::numeric,3) AS stdev_diff_speed
+FROM axes_classification C, speed_differences D, queries_per_class E
+WHERE C.qid = D.qid
+AND C.class = E.win_slide
+GROUP BY C.class, E.num_queries
+ORDER BY C.class;
+
+
+
+--------------------------------------------------------------------------------------------
+--Statistics (including mean and standard deviation) in speed differences per road length 
+--------------------------------------------------------------------------------------------
+--Roads divided into categories according to their total length (in meters)
+--Perhaps apply an additional filter to emphasize the case when load shedding is applied:  AND A.t >=1200
+
+
+--SEMANTIC Load Shedding vs Exhaustive:
+
+WITH speed_differences AS (
+       SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+       FROM LS_semantic_speed A, LS_exhaustive_speed B
+       WHERE A.t = B.t
+--     AND A.t >=1200
+       AND A.qID = B.qID
+       AND A.speed >0 AND B.speed>0),
+      axes_length AS 
+  (SELECT qid, SUM(length) AS road_length
+  FROM athens_axes
+  GROUP BY qid),
+  length_classes AS
+  (SELECT qid, road_length, (CASE WHEN road_length<200 THEN ' <200'
+			WHEN (road_length>=200 AND road_length<500) THEN ' 200-500'
+			WHEN (road_length>=500 AND road_length<1000) THEN ' 500-1000'
+			WHEN (road_length>=1000 AND road_length<2000) THEN '1000-2000'
+			ELSE '2000+'
+			END) as class
+ FROM axes_length)
+SELECT C.class AS axis_length, count(D.*) AS num_speed_results, round(max(diff_speed)::numeric,3) AS max_diff_speed, round(avg(diff_speed)::numeric,3) AS avg_diff_speed, round(stddev(diff_speed)::numeric,3) AS stdev_diff_speed
+FROM length_classes C, speed_differences D
+WHERE C.qid = D.qid
+GROUP BY C.class
+ORDER BY C.class;
+
+
+--RANDOM Load Shedding vs Exhaustive:
+
+WITH speed_differences AS (
+       SELECT A.t, A.qid, A.speed AS est_Speed_LS, B.speed AS real_Speed_noLS, abs(A.speed - B.speed) AS diff_Speed, A.num_objects AS used_Objects_LS, B.num_objects AS all_Objects_noLS
+       FROM LS_random_speed A, LS_exhaustive_speed B
+       WHERE A.t = B.t
+--     AND A.t >=1200
+       AND A.qID = B.qID
+       AND A.speed >0 AND B.speed>0),
+      axes_length AS 
+  (SELECT qid, SUM(length) AS road_length
+  FROM athens_axes
+  GROUP BY qid),
+  length_classes AS
+  (SELECT qid, road_length, (CASE WHEN road_length<200 THEN ' <200'
+			WHEN (road_length>=200 AND road_length<500) THEN ' 200-500'
+			WHEN (road_length>=500 AND road_length<1000) THEN ' 500-1000'
+			WHEN (road_length>=1000 AND road_length<2000) THEN '1000-2000'
+			ELSE '2000+'
+			END) as class
+ FROM axes_length)
+SELECT C.class AS axis_length, count(D.*) AS num_speed_results, round(max(diff_speed)::numeric,3) AS max_diff_speed, round(avg(diff_speed)::numeric,3) AS avg_diff_speed, round(stddev(diff_speed)::numeric,3) AS stdev_diff_speed
+FROM length_classes C, speed_differences D
+WHERE C.qid = D.qid
+GROUP BY C.class
+ORDER BY C.class;
+

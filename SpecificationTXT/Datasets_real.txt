@@ -1,0 +1,168 @@
+**********************************************
+Subject: Taxi trajectories in Rome, Italy
+Dataset processed by Kostas Patroumpas, mailto:kpatro@dblab.ece.ntua.gr
+Institution: National Technical University of Athens.
+Date: 26/1/2017
+Revised: 11/3/2017
+**********************************************
+
+Original ASCII file is available at: http://crawdad.org/roma/taxi/20140717/ and contains 21,817,851 point locations collected from 316 taxis in Rome (Italy) during February 2014. 
+
+Note that original GPS locations were being reported also while an object remained stationary (i.e., taxi was not moving). Those locations were eliminated by calculating instantaneous speed between successive positions from each object and considering that it was stopped when its speed < 5 km/h. Considering these periods as stops, 80,427 trajectories were derived (i.e., traces of each taxi when it was actually moving).
+
+In general, GPS positions are not falling along the road network. Thus, they were map-matched against the OpenStreetMap (OSM) road network for Rome (ESRI shapefile: osm_roads_rome) using a C# implementation [1] of a state-of-the-art map-matching algorithm [2]. This algorirthm failed to derive a map-matched trajectory in about 25% of the input traces (i.e., those identified between stops), and finally resulting into 60,394 map-matched trajectories. 
+
+The duration of each map-matched trajectory differs, ranging from 300 to 4971.757 seconds. Besides, note that the original trajectories occur during a period of one month (February 2014). So, in order to simulate a situation where a large number of objects are moving simultaneously, the starting times of each map-matched trajectory were shifted in time. Instead of having all objects start moving at t=0, their traces were time-shifted by a varying slack parameter in order to occur within a time period T=5000 seconds, so that at t=2500 seconds each object is found halfway on its journey. Initially, no object is moving, but progressively more and more start circulating; practically, in the middle of the entire period all objects are on the move and eventually terminate their trips in the reverse order they started moving. This situation attempts to simulate a peak effect in traffic conditions, especially along major arterials of the road network. 
+
+All data is georeferenced to the "Italian Monte Mario (Rome) / zone 1" reference system (EPSG:3003).
+ 
+
+------------------------------------
+OBJECTS
+------------------------------------
+
+A. File: rome_taxis_map_matched.txt
+------------------------------------
+
+This SPACE separated file contains 21,342,445 timestamped positions of 60,394 map-matched trajectories from taxis moving on the road network of the greater area of Rome (Italy) during a time period of almost T=5000 seconds.
+
+Schema: < t id x y qid >
+
+Notes:
+------
+A.1) Timestamp values are real numeric values in [14, 4986), so the first movement is reported at t=14 seconds and the last at t=4986 seconds. Not all objects were originally sampled at the same rate (i.e., at a fixed period), so timestamps are NOT successive integers, but real values. However, each time an object was identified in another road segment by the map-matching algorithm, its (time-interpolated) position was included in the file. File contents are sorted by ascending timestamp values.
+
+A.2) Object identifiers are successive integers; enumeration does NOT start from 0, but from 1. 
+
+A.3) Coordinates are expressed in meters according to the Italian Monte Mario (Rome) reference system (EPSG:3003), and are all found within this bounding box: 
+   X_min = 1757941.71159924
+   Y_min = 4610312.35604684
+   X_max = 1818855.37404382
+   Y_max = 4670426.53918593
+
+A.4) The last attribute in each tuple indicates the identifier of the QUERY buffer (Query specifications in file: rome_queries_buffers.txt; also in ESRI shapefile: osm_buffers_rome) where the taxi is actually located at that specific timestamp. Normally, this information can be inferred by checking each pair of object coordinates against the spatial representation of queries over the road network (using a tiny buffer around a series of OSM segments belonging to the same road, as specified next).
+
+
+----------------------------------
+QUERIES
+----------------------------------
+
+B. File: rome_queries_buffers.txt
+----------------------------------
+
+This SPACE separated file contains 60,577 polygon buffers along road segments in the greater area of Rome, Italy.
+
+Schema: < t qid class_id X_start,Y_start X_end,Y_end buffer_polygon >
+
+Notes:
+-------
+B.1) Query specifications are only given for time t=0.
+
+B.2) Each row in the file corresponds to (one or multiple) road segments belonging to the same road, as represented in the OSM database. Each query is abstracted as a tiny buffer polygon of 2-meters width around the centerline of respective segments according to their OSM geometric representation.
+
+B.3) Query identifiers (attribute qid) are integer values in [1,60577]; enumeration does NOT start from 0, but from 1. In total, 60577 buffers over road segments are contained in this file and cover the greater area of Rome, Italy. These query identifiers correspond to those listed in object traces (file: rome_taxis_map_matched.txt) and the geographical representation (ESRI shapefile: osm_buffers_rome).
+
+B.4) Query identifiers in each tuple are unique.
+
+B.5) Classification in attribute class_id is the OSM classification (see note C.2 below), and actually correspond to the original road segments that were used for creating each buffer polygon.
+
+B.6) Start-vertices (X_start,Y_start) and end-vertices (X_end,Y_end) are given with their exact coordinates. 
+CAUTION! X,Y values are separated by COMMA (not a SPACE).
+
+B.7) Buffer polygons have been created by taking a 2-meter zone around the centerline (1 meter on the left, 1 meter on the right side). Although this can hardly represent the actual width of a road, it minimizes polygon overlaps at crossroads. This size is also considered enough for locating the roads traversed by object traces, since all (map-matched) trajectories occur along the centerlines of roads, given that there is no lane information for this road network. 
+CAUTION! The series of X,Y values are separated by COMMA (there is no SPACE character in this series of coordinate values). The last pair of coordinates coincides with the first pair, in order to form a closed ring.
+
+B.8) Object positions contained in file 'rome_taxis_map_matched.txt' always move along queries listed in file 'rome_queries_buffers.txt'. However, there are road segments where no object ever appears to be moving typically, more often in the outskirts of the city).
+
+B.9) Coordinates are expressed in meters according to the Italian Monte Mario (Rome) reference system (EPSG:3003), and are all found within this bounding box:
+   X_min = 1757168.54372984
+   Y_min = 4608886.62953172
+   X_max = 1820549.37541514
+   Y_max = 4671238.93151156
+
+
+---------------------------------------------------------------------
+OpenStreetMap ROAD NETWORK for Rome
+---------------------------------------------------------------------
+C. Files: osm_roads_rome.shp, osm_roads_rome.dbf, osm_roads_rome.shx, osm_roads_rome.prj
+---------------------------------------------------------------------
+
+This ESRI shapefile has been extracted from the OSM database and contains road segments for the greater area of Rome, Italy. It is given here only as a cartographic reference and can be used as a backdrop for map rendering.
+
+Schema: < segment_id class_id osm_id name >
+
+Notes:
+--------
+
+C.1) Each record has a unique segment_id. These identifiers do NOT appear in the aforementioned datasets for object trajectories and query buffers.
+
+C.2) Road categories are according to the OSM classification (http://wiki.openstreetmap.org/wiki/Key:highway#Roads) as follows:
+-------------------------------
+class_id	OSM_category
+-------------------------------
+1		motorway
+2		motorway_link
+3		trunk
+4		trunk_link
+5		primary
+6		primary_link
+7		secondary
+8		secondary_link
+9		tertiary
+10		tertiary_link
+11		unclassified
+12		road
+13		residential
+14 		living_street
+
+
+C.3) Attribute osm_id is not unique and is kept as reference to OSM database.
+
+C.4) Names of roads are given in the Italian language. There are road segments with no name.
+
+
+---------------------------------------------------------------------
+BUFFER polygons for queries over the road network in Rome
+---------------------------------------------------------------------
+D. Files: osm_buffers_rome.shp, osm_buffers_rome.dbf, osm_buffers_rome.shx, osm_buffers_rome.prj
+---------------------------------------------------------------------
+
+This ESRI shapefile corresponds to buffer polygons around each query as detailed in (B) above. 
+
+Schema: < qid osm_id name class_id > 
+
+D.1) Query identifiers in each tuple are unique. Each corresponds to a query specification as detailed in (B).
+
+D.2) OSM identifiers in attribute osm_id as useful as a reference with the underlying road network as detailed in (C).
+
+D.3) Classification in attribute class_id is the OSM classification (see C.2 above), and correspond to the original road segments that were used for creating each buffer polygon.
+
+D.4) Names of buffers are given in the Italian language, and correspond to the common name of road segments that were used for creating each buffer polygon. There are buffers with no name.
+
+
+---------------------------------------------------------------------
+STARTING TIMESTAMPS for each trajectory
+---------------------------------------------------------------------
+E. File: rome_taxis_map_matched_start_times.txt
+-----------------------------------------------
+
+This SPACE separated file contains 60,394 records, and indicates the timestamp that each object started its movement. Information in this file can be used to time-shift trajectories as recorded in file (A).
+
+Schema: < id t>
+
+Notes:
+--------
+
+E.1) Identifiers correspond to each distinct object that reports its positions in file: rome_taxis_map_matched.txt.
+
+E.2) Timestamp indicates the starting time of each trajectory. The timestamp value per object corresponds to the first position reported by that object in file: rome_taxis_map_matched.txt.
+
+
+---------------------
+REFERENCES
+---------------------
+
+[1] Travel Time Analysis Project. Developed by Lukas Kabrt during Google Summer of Code, 2010. Source code available at http://code.google.com/p/traveltimeanalysis/source/browse/
+
+[2] Y. Lou, C. Zhang, Y. Zheng, X. Xie, W. Wang, and Y. Huang. Map-matching for Low-Sampling-Rate GPS Trajectories. In ACM GIS, pp. 352-361, 2009.
+         
